@@ -1,0 +1,270 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      skip_health_check:
+        description: 'Skip health check verification'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  DEPLOYMENT_NAME: calculator-deployment
+  NAMESPACE: default
+  HEALTH_CHECK_URL: https://calculator.example.com/health
+  ROLLOUT_TIMEOUT: 10m
+
+jobs:
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    
+    environment:
+      name: production
+      url: https://calculator.example.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value={{date 'YYYYMMDD-HHmmss'}}
+          labels: |
+            org.opencontainers.image.title=Simple Web Calculator
+            org.opencontainers.image.description=Production deployment of web-based calculator
+            org.opencontainers.image.vendor=${{ github.repository_owner }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+      
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ steps.meta.outputs.version }}
+      
+      - name: Generate image digest
+        id: digest
+        run: |
+          echo "digest=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+          echo "image_tag=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+      
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+      
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+          
+          kubectl cluster-info
+          kubectl version --client
+      
+      - name: Verify Kubernetes connection
+        run: |
+          kubectl get nodes
+          kubectl get namespaces
+          kubectl get deployments -n ${{ env.NAMESPACE }}
+      
+      - name: Update deployment image
+        id: update
+        run: |
+          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          
+          echo "Updating deployment ${{ env.DEPLOYMENT_NAME }} in namespace ${{ env.NAMESPACE }}"
+          echo "New image: $IMAGE_TAG"
+          
+          kubectl set image deployment/${{ env.DEPLOYMENT_NAME }} \
+            calculator=$IMAGE_TAG \
+            -n ${{ env.NAMESPACE }} \
+            --record
+          
+          kubectl annotate deployment/${{ env.DEPLOYMENT_NAME }} \
+            kubernetes.io/change-cause="Deploy version ${{ github.sha }} from commit ${{ github.sha }} by ${{ github.actor }}" \
+            -n ${{ env.NAMESPACE }} \
+            --overwrite
+          
+          echo "deployment_updated=true" >> $GITHUB_OUTPUT
+      
+      - name: Wait for rollout to complete
+        id: rollout
+        run: |
+          echo "Waiting for rollout to complete (timeout: ${{ env.ROLLOUT_TIMEOUT }})"
+          
+          if kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} \
+            -n ${{ env.NAMESPACE }} \
+            --timeout=${{ env.ROLLOUT_TIMEOUT }}; then
+            echo "Rollout completed successfully"
+            echo "rollout_status=success" >> $GITHUB_OUTPUT
+          else
+            echo "Rollout failed or timed out"
+            echo "rollout_status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+      
+      - name: Get deployment status
+        if: always()
+        run: |
+          echo "=== Deployment Status ==="
+          kubectl get deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }}
+          
+          echo ""
+          echo "=== Pod Status ==="
+          kubectl get pods -n ${{ env.NAMESPACE }} -l app=calculator
+          
+          echo ""
+          echo "=== Recent Events ==="
+          kubectl get events -n ${{ env.NAMESPACE }} --sort-by='.lastTimestamp' | tail -20
+      
+      - name: Verify health check
+        if: ${{ !inputs.skip_health_check && steps.rollout.outputs.rollout_status == 'success' }}
+        run: |
+          echo "Running health check verification"
+          
+          MAX_ATTEMPTS=30
+          ATTEMPT=0
+          SLEEP_DURATION=10
+          
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "Health check attempt $ATTEMPT of $MAX_ATTEMPTS"
+            
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" ${{ env.HEALTH_CHECK_URL }} || echo "000")
+            
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✓ Health check passed (HTTP $HTTP_CODE)"
+              exit 0
+            else
+              echo "✗ Health check failed (HTTP $HTTP_CODE)"
+              
+              if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+                echo "Retrying in ${SLEEP_DURATION} seconds..."
+                sleep $SLEEP_DURATION
+              fi
+            fi
+          done
+          
+          echo "Health check failed after $MAX_ATTEMPTS attempts"
+          exit 1
+      
+      - name: Get pod logs on failure
+        if: failure()
+        run: |
+          echo "=== Pod Logs (Last 100 lines) ==="
+          kubectl logs -n ${{ env.NAMESPACE }} \
+            -l app=calculator \
+            --tail=100 \
+            --all-containers=true \
+            --prefix=true || echo "Failed to retrieve logs"
+      
+      - name: Rollback deployment on failure
+        if: failure() && steps.update.outputs.deployment_updated == 'true'
+        run: |
+          echo "Deployment failed, initiating rollback"
+          
+          echo "=== Current Deployment Status ==="
+          kubectl get deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }}
+          
+          echo ""
+          echo "=== Rollback History ==="
+          kubectl rollout history deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }}
+          
+          echo ""
+          echo "=== Executing Rollback ==="
+          kubectl rollout undo deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }}
+          
+          echo ""
+          echo "Waiting for rollback to complete"
+          kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} \
+            -n ${{ env.NAMESPACE }} \
+            --timeout=5m
+          
+          echo ""
+          echo "=== Post-Rollback Status ==="
+          kubectl get deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }}
+          kubectl get pods -n ${{ env.NAMESPACE }} -l app=calculator
+      
+      - name: Send Slack notification
+        uses: 8398a7/action-slack@v3
+        if: always()
+        with:
+          status: ${{ job.status }}
+          text: |
+            *Production Deployment: ${{ job.status }}*
+            
+            *Repository:* ${{ github.repository }}
+            *Branch:* ${{ github.ref_name }}
+            *Commit:* ${{ github.sha }}
+            *Author:* ${{ github.actor }}
+            *Image:* ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            *Deployment:* ${{ env.DEPLOYMENT_NAME }}
+            *Namespace:* ${{ env.NAMESPACE }}
+            *URL:* ${{ env.HEALTH_CHECK_URL }}
+            
+            <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Workflow Run>
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          channel: '#deployments'
+          username: 'GitHub Actions'
+          icon_emoji: ':rocket:'
+        continue-on-error: true
+      
+      - name: Create deployment summary
+        if: always()
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment:** \`${{ env.DEPLOYMENT_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Namespace:** \`${{ env.NAMESPACE }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Author:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Deployment Details" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          kubectl get deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }} -o wide >> $GITHUB_STEP_SUMMARY || echo "Failed to get deployment details" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

@@ -16,6 +16,7 @@
   --clear-hover: hsl(0, 85%, 50%);
   --shadow: hsla(0, 0%, 0%, 0.1);
   --shadow-hover: hsla(0, 0%, 0%, 0.15);
+  --error-color: hsl(0, 85%, 55%);
 
   /* Spacing */
   --space-xs: 0.5rem;
@@ -141,6 +142,24 @@ body {
 .display:focus {
   outline: 3px solid var(--primary);
   outline-offset: 2px;
+}
+
+.display.error {
+  color: var(--error-color);
+  font-weight: bold;
+  animation: shake 0.3s;
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-10px);
+  }
+  75% {
+    transform: translateX(10px);
+  }
 }
 
 /* ============================================

@@ -1,2 +1,21 @@
-# simple-web-based-calculator
-This is a simple project requiring a basic web-based calculator with standard arithmetic operations. Recommended: 1 milestone, 1 sprint, 4-5 tasks. This is a straightforward implementation that can be built with vanilla HTML, CSS, and JavaScript without any framework overhead. The calculator should support basic operations (addition, subtraction...
+# Simple Web-Based Calculator
+
+A simple, lightweight web-based calculator application built with vanilla JavaScript. This project provides a clean, user-friendly interface for performing basic arithmetic operations.
+
+## Features
+
+- Basic arithmetic operations (addition, subtraction, multiplication, division)
+- Clean and intuitive user interface
+- Responsive design for various screen sizes
+- Real-time calculation display
+- Error handling for invalid operations
+- Keyboard support for enhanced usability
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Node.js** >= 18.0.0
+- **npm** (comes with Node.js)
+
+To verify your Node.js version:

@@ -1,12 +1,12 @@
 /**
- * Calculator Keyboard Input Test Suite
- * Comprehensive tests for keyboard event handling and input processing
- * @generated-from: task-id:TASK-003-KEYBOARD-TEST
- * @tests: calculator.js:v1.0.0 - Keyboard Input Module
- * Coverage Target: >90%
+ * Calculator Comprehensive Test Suite
+ * Complete test coverage for production-grade calculator implementation
+ * @generated-from: task-id:TASK-003-COMPREHENSIVE-TEST
+ * @tests: calculator.js:v1.0.0 - Complete Coverage
+ * Coverage Target: >95%
  */
 
-describe('Keyboard Input', () => {
+describe('Calculator - Comprehensive Test Suite', () => {
   let calculator;
   let mockDisplay;
   let mockButtonsContainer;
@@ -54,1106 +54,1048 @@ describe('Keyboard Input', () => {
   });
 
   // ============================================================================
-  // 🔢 NUMBER KEY INPUT TESTS
+  // 🚨 ERROR HANDLING TESTS
   // ============================================================================
 
-  describe('Number Key Input (0-9)', () => {
-    test('should handle single digit key press (0)', () => {
-      const event = new KeyboardEvent('keydown', { key: '0' });
-      document.dispatchEvent(event);
+  describe('Error Handling', () => {
+    describe('Division by Zero', () => {
+      test('should display error when dividing by zero', () => {
+        calculator.appendDigit('5');
+        calculator.setOperation('/');
+        calculator.appendDigit('0');
+        calculator.calculate();
 
-      expect(calculator.currentValue).toBe('0');
-      expect(mockDisplay.textContent).toBe('0');
+        expect(calculator.hasError).toBe(true);
+        expect(calculator.currentValue).toBe('Cannot divide by zero');
+        expect(mockDisplay.textContent).toBe('Cannot divide by zero');
+      });
+
+      test('should prevent further operations after division by zero error', () => {
+        calculator.appendDigit('10');
+        calculator.setOperation('/');
+        calculator.appendDigit('0');
+        calculator.calculate();
+
+        calculator.appendDigit('5');
+        expect(calculator.currentValue).toBe('Cannot divide by zero');
+      });
+
+      test('should handle division by zero in chained operations', () => {
+        calculator.appendDigit('10');
+        calculator.setOperation('+');
+        calculator.appendDigit('5');
+        calculator.setOperation('/');
+        calculator.appendDigit('0');
+        calculator.calculate();
+
+        expect(calculator.hasError).toBe(true);
+        expect(calculator.currentValue).toBe('Cannot divide by zero');
+      });
+
+      test('should handle zero divided by zero', () => {
+        calculator.appendDigit('0');
+        calculator.setOperation('/');
+        calculator.appendDigit('0');
+        calculator.calculate();
+
+        expect(calculator.hasError).toBe(true);
+        expect(calculator.currentValue).toBe('Cannot divide by zero');
+      });
     });
 
-    test('should handle single digit key press (1-9)', () => {
-      const testCases = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    describe('Infinity Result Handling', () => {
+      test('should handle result approaching infinity', () => {
+        calculator.currentValue = '9999999999999999';
+        calculator.setOperation('*');
+        calculator.currentValue = '9999999999999999';
+        calculator.calculate();
 
-      testCases.forEach((digit) => {
+        expect(calculator.hasError).toBe(true);
+        expect(calculator.currentValue).toBe('Number too large');
+      });
+
+      test('should handle negative infinity', () => {
+        calculator.currentValue = '-9999999999999999';
+        calculator.setOperation('*');
+        calculator.currentValue = '9999999999999999';
+        calculator.calculate();
+
+        expect(calculator.hasError).toBe(true);
+        expect(calculator.currentValue).toBe('Number too large');
+      });
+
+      test('should validate number within safe range', () => {
+        const result = calculator.validateNumber(Number.MAX_SAFE_INTEGER + 1);
+        expect(result).toBe(false);
+      });
+
+      test('should validate number below safe range', () => {
+        const result = calculator.validateNumber(Number.MIN_SAFE_INTEGER - 1);
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('NaN Result Handling', () => {
+      test('should handle NaN in validation', () => {
+        const result = calculator.validateNumber(NaN);
+        expect(result).toBe(false);
+      });
+
+      test('should handle invalid number type', () => {
+        const result = calculator.validateNumber('not a number');
+        expect(result).toBe(false);
+      });
+
+      test('should handle undefined in validation', () => {
+        const result = calculator.validateNumber(undefined);
+        expect(result).toBe(false);
+      });
+
+      test('should handle null in validation', () => {
+        const result = calculator.validateNumber(null);
+        expect(result).toBe(false);
+      });
+
+      test('should handle Infinity in validation', () => {
+        const result = calculator.validateNumber(Infinity);
+        expect(result).toBe(false);
+      });
+
+      test('should handle -Infinity in validation', () => {
+        const result = calculator.validateNumber(-Infinity);
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('Error State Management', () => {
+      test('should prevent operations in error state', () => {
+        calculator.handleError('DIVIDE_BY_ZERO');
+
+        calculator.setOperation('+');
+        expect(calculator.operation).toBeNull();
+      });
+
+      test('should prevent digit input in error state', () => {
+        calculator.handleError('DIVIDE_BY_ZERO');
+
+        calculator.appendDigit('5');
+        expect(calculator.currentValue).toBe('Cannot divide by zero');
+      });
+
+      test('should allow clear to reset error state', () => {
+        calculator.handleError('DIVIDE_BY_ZERO');
+        expect(calculator.hasError).toBe(true);
+
         calculator.clear();
-        const event = new KeyboardEvent('keydown', { key: digit });
-        document.dispatchEvent(event);
+        expect(calculator.hasError).toBe(false);
+        expect(calculator.currentValue).toBe('0');
+      });
 
-        expect(calculator.currentValue).toBe(digit);
-        expect(mockDisplay.textContent).toBe(digit);
+      test('should handle multiple error types', () => {
+        const errorTypes = [
+          'DIVIDE_BY_ZERO',
+          'NUMBER_TOO_LARGE',
+          'INVALID_NUMBER',
+          'CALCULATION_ERROR',
+        ];
+
+        errorTypes.forEach((errorType) => {
+          calculator.clear();
+          calculator.handleError(errorType);
+          expect(calculator.hasError).toBe(true);
+          expect(calculator.ERROR_MESSAGES[errorType]).toBeDefined();
+        });
+      });
+
+      test('should handle unknown error type', () => {
+        calculator.handleError('UNKNOWN_ERROR');
+        expect(calculator.hasError).toBe(true);
+        expect(calculator.currentValue).toBe('Calculation error');
+      });
+
+      test('should reset previousValue and operation on error', () => {
+        calculator.appendDigit('5');
+        calculator.setOperation('+');
+        calculator.appendDigit('3');
+
+        calculator.handleError('CALCULATION_ERROR');
+
+        expect(calculator.previousValue).toBeNull();
+        expect(calculator.operation).toBeNull();
       });
     });
 
-    test('should build multi-digit number from sequential key presses', () => {
-      const digits = ['1', '2', '3', '4', '5'];
+    describe('Error Recovery', () => {
+      test('should allow new calculation after clearing error', () => {
+        calculator.appendDigit('5');
+        calculator.setOperation('/');
+        calculator.appendDigit('0');
+        calculator.calculate();
 
-      digits.forEach((digit) => {
-        const event = new KeyboardEvent('keydown', { key: digit });
-        document.dispatchEvent(event);
+        calculator.clear();
+        calculator.appendDigit('6');
+        calculator.setOperation('+');
+        calculator.appendDigit('4');
+        calculator.calculate();
+
+        expect(calculator.currentValue).toBe('10');
+        expect(calculator.hasError).toBe(false);
       });
 
-      expect(calculator.currentValue).toBe('12345');
-      expect(mockDisplay.textContent).toBe('12345');
+      test('should maintain display element reference after error', () => {
+        calculator.handleError('DIVIDE_BY_ZERO');
+        expect(calculator.displayElement).toBe(mockDisplay);
+      });
+    });
+  });
+
+  // ============================================================================
+  // ✅ INPUT VALIDATION TESTS
+  // ============================================================================
+
+  describe('Input Validation', () => {
+    describe('Multiple Decimal Points Prevention', () => {
+      test('should prevent multiple decimal points in same number', () => {
+        calculator.appendDigit('5');
+        calculator.appendDigit('.');
+        calculator.appendDigit('2');
+        calculator.appendDigit('.');
+
+        expect(calculator.currentValue).toBe('5.2');
+      });
+
+      test('should allow decimal point in new number after operation', () => {
+        calculator.appendDigit('5');
+        calculator.appendDigit('.');
+        calculator.appendDigit('2');
+        calculator.setOperation('+');
+        calculator.appendDigit('3');
+        calculator.appendDigit('.');
+        calculator.appendDigit('1');
+
+        expect(calculator.currentValue).toBe('3.1');
+      });
+
+      test('should validate decimal point correctly', () => {
+        calculator.currentValue = '5.2';
+        expect(calculator.isValidDecimal()).toBe(false);
+
+        calculator.currentValue = '5';
+        expect(calculator.isValidDecimal()).toBe(true);
+      });
+
+      test('should handle decimal point at start', () => {
+        calculator.appendDigit('.');
+        expect(calculator.currentValue).toBe('0.');
+      });
+
+      test('should handle decimal point after zero', () => {
+        calculator.appendDigit('0');
+        calculator.appendDigit('.');
+        expect(calculator.currentValue).toBe('0.');
+      });
+
+      test('should prevent decimal after existing decimal', () => {
+        calculator.appendDigit('1');
+        calculator.appendDigit('.');
+        calculator.appendDigit('5');
+        calculator.appendDigit('.');
+        calculator.appendDigit('3');
+
+        expect(calculator.currentValue).toBe('1.53');
+      });
     });
 
-    test('should replace leading zero with digit key', () => {
-      expect(calculator.currentValue).toBe('0');
+    describe('Leading Zeros Handling', () => {
+      test('should replace leading zero with digit', () => {
+        expect(calculator.currentValue).toBe('0');
 
-      const event = new KeyboardEvent('keydown', { key: '7' });
-      document.dispatchEvent(event);
+        calculator.appendDigit('5');
+        expect(calculator.currentValue).toBe('5');
+      });
 
-      expect(calculator.currentValue).toBe('7');
+      test('should not add multiple leading zeros', () => {
+        calculator.appendDigit('0');
+        calculator.appendDigit('0');
+        calculator.appendDigit('0');
+
+        expect(calculator.currentValue).toBe('0');
+      });
+
+      test('should allow zero after decimal point', () => {
+        calculator.appendDigit('1');
+        calculator.appendDigit('.');
+        calculator.appendDigit('0');
+        calculator.appendDigit('0');
+
+        expect(calculator.currentValue).toBe('1.00');
+      });
+
+      test('should handle zero in middle of number', () => {
+        calculator.appendDigit('1');
+        calculator.appendDigit('0');
+        calculator.appendDigit('5');
+
+        expect(calculator.currentValue).toBe('105');
+      });
+
+      test('should reset to zero after clear', () => {
+        calculator.appendDigit('5');
+        calculator.clear();
+
+        expect(calculator.currentValue).toBe('0');
+      });
     });
 
-    test('should handle rapid number key presses', () => {
-      const startTime = performance.now();
+    describe('Very Large Number Formatting', () => {
+      test('should format very large numbers in exponential notation', () => {
+        const largeNumber = 1e16;
+        const formatted = calculator.formatNumber(largeNumber);
 
-      for (let i = 0; i < 50; i++) {
+        expect(formatted).toContain('e');
+      });
+
+      test('should handle maximum display length', () => {
+        const longNumber = '123456789012345';
+
+        for (const digit of longNumber) {
+          calculator.appendDigit(digit);
+        }
+
+        expect(calculator.currentValue).toBe(longNumber);
+
+        calculator.appendDigit('6');
+        expect(calculator.currentValue).toBe(longNumber);
+      });
+
+      test('should format large result with precision', () => {
+        const result = 123456789012345;
+        const formatted = calculator.formatNumber(result);
+
+        expect(formatted.length).toBeLessThanOrEqual(20);
+      });
+
+      test('should handle numbers at MAX_SAFE_INTEGER', () => {
+        const result = calculator.validateNumber(Number.MAX_SAFE_INTEGER);
+        expect(result).toBe(true);
+      });
+
+      test('should reject numbers above MAX_SAFE_INTEGER', () => {
+        const result = calculator.validateNumber(Number.MAX_SAFE_INTEGER + 1);
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('Very Small Number Formatting', () => {
+      test('should format very small numbers in exponential notation', () => {
+        const smallNumber = 1e-16;
+        const formatted = calculator.formatNumber(smallNumber);
+
+        expect(formatted).toContain('e');
+      });
+
+      test('should handle zero correctly', () => {
+        const formatted = calculator.formatNumber(0);
+        expect(formatted).toBe('0');
+      });
+
+      test('should handle negative small numbers', () => {
+        const smallNegative = -1e-16;
+        const formatted = calculator.formatNumber(smallNegative);
+
+        expect(formatted).toContain('e');
+      });
+
+      test('should handle numbers at MIN_SAFE_INTEGER', () => {
+        const result = calculator.validateNumber(Number.MIN_SAFE_INTEGER);
+        expect(result).toBe(true);
+      });
+
+      test('should reject numbers below MIN_SAFE_INTEGER', () => {
+        const result = calculator.validateNumber(Number.MIN_SAFE_INTEGER - 1);
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('Invalid Operation Sequences', () => {
+      test('should validate operation symbols', () => {
+        expect(calculator.validateOperation('+')).toBe(true);
+        expect(calculator.validateOperation('-')).toBe(true);
+        expect(calculator.validateOperation('*')).toBe(true);
+        expect(calculator.validateOperation('/')).toBe(true);
+        expect(calculator.validateOperation('x')).toBe(false);
+        expect(calculator.validateOperation('')).toBe(false);
+      });
+
+      test('should ignore invalid operation', () => {
+        calculator.appendDigit('5');
+        calculator.setOperation('invalid');
+
+        expect(calculator.operation).toBeNull();
+      });
+
+      test('should handle operation without previous value', () => {
+        calculator.currentValue = 'NaN';
+        calculator.setOperation('+');
+
+        expect(calculator.operation).toBeNull();
+      });
+
+      test('should handle calculate without operation', () => {
+        calculator.appendDigit('5');
+        calculator.calculate();
+
+        expect(calculator.currentValue).toBe('5');
+      });
+
+      test('should handle calculate without previous value', () => {
+        calculator.appendDigit('5');
+        calculator.operation = '+';
+        calculator.previousValue = null;
+        calculator.calculate();
+
+        expect(calculator.currentValue).toBe('5');
+      });
+
+      test('should handle operation in error state', () => {
+        calculator.handleError('CALCULATION_ERROR');
+        calculator.setOperation('+');
+
+        expect(calculator.operation).toBeNull();
+      });
+    });
+
+    describe('Display Value Formatting', () => {
+      test('should preserve trailing decimal point', () => {
+        calculator.currentValue = '5.';
+        const formatted = calculator.formatDisplayValue('5.');
+
+        expect(formatted).toBe('5.');
+      });
+
+      test('should format valid number', () => {
+        const formatted = calculator.formatDisplayValue('123.45');
+        expect(formatted).toBe('123.45');
+      });
+
+      test('should handle invalid display value', () => {
+        const formatted = calculator.formatDisplayValue('invalid');
+        expect(formatted).toBe('0');
+      });
+
+      test('should format zero', () => {
+        const formatted = calculator.formatDisplayValue('0');
+        expect(formatted).toBe('0');
+      });
+    });
+  });
+
+  // ============================================================================
+  // 🎯 EDGE CASES TESTS
+  // ============================================================================
+
+  describe('Edge Cases', () => {
+    describe('Rapid Button Clicks', () => {
+      test('should handle rapid number button clicks', () => {
+        const button = document.querySelector('[data-number="5"]');
+
+        for (let i = 0; i < 50; i++) {
+          button.click();
+        }
+
+        expect(calculator.currentValue.length).toBeLessThanOrEqual(15);
+        expect(calculator.hasError).toBe(false);
+      });
+
+      test('should handle rapid operation button clicks', () => {
+        calculator.appendDigit('5');
+
+        const addButton = document.querySelector('[data-operation="+"]');
+        const subtractButton = document.querySelector('[data-operation="-"]');
+
+        for (let i = 0; i < 20; i++) {
+          addButton.click();
+          subtractButton.click();
+        }
+
+        expect(calculator.operation).toBe('-');
+        expect(calculator.hasError).toBe(false);
+      });
+
+      test('should handle rapid equals button clicks', () => {
+        calculator.appendDigit('5');
+        calculator.setOperation('+');
+        calculator.appendDigit('3');
+
+        const equalsButton = document.querySelector('[data-operation="="]');
+
+        for (let i = 0; i < 10; i++) {
+          equalsButton.click();
+        }
+
+        expect(calculator.currentValue).toBe('8');
+        expect(calculator.hasError).toBe(false);
+      });
+
+      test('should handle rapid clear button clicks', () => {
+        const clearButton = document.querySelector('[data-action="clear"]');
+
+        for (let i = 0; i < 20; i++) {
+          calculator.appendDigit('5');
+          clearButton.click();
+        }
+
+        expect(calculator.currentValue).toBe('0');
+        expect(calculator.hasError).toBe(false);
+      });
+
+      test('should handle mixed rapid clicks', () => {
+        const numButton = document.querySelector('[data-number="5"]');
+        const opButton = document.querySelector('[data-operation="+"]');
+        const clearButton = document.querySelector('[data-action="clear"]');
+
+        for (let i = 0; i < 10; i++) {
+          numButton.click();
+          opButton.click();
+          clearButton.click();
+        }
+
+        expect(calculator.currentValue).toBe('0');
+        expect(calculator.hasError).toBe(false);
+      });
+    });
+
+    describe('Overflow Conditions', () => {
+      test('should handle addition overflow', () => {
+        calculator.currentValue = String(Number.MAX_SAFE_INTEGER);
+        calculator.setOperation('+');
+        calculator.currentValue = String(Number.MAX_SAFE_INTEGER);
+        calculator.calculate();
+
+        expect(calculator.hasError).toBe(true);
+        expect(calculator.currentValue).toBe('Number too large');
+      });
+
+      test('should handle multiplication overflow', () => {
+        calculator.currentValue = '999999999999999';
+        calculator.setOperation('*');
+        calculator.currentValue = '999999999999999';
+        calculator.calculate();
+
+        expect(calculator.hasError).toBe(true);
+      });
+
+      test('should handle exponential growth', () => {
+        calculator.appendDigit('2');
+
+        for (let i = 0; i < 60; i++) {
+          calculator.setOperation('*');
+          calculator.appendDigit('2');
+          calculator.calculate();
+
+          if (calculator.hasError) {
+            break;
+          }
+        }
+
+        expect(calculator.hasError).toBe(true);
+      });
+    });
+
+    describe('Underflow Conditions', () => {
+      test('should handle subtraction underflow', () => {
+        calculator.currentValue = String(Number.MIN_SAFE_INTEGER);
+        calculator.setOperation('-');
+        calculator.currentValue = String(Number.MAX_SAFE_INTEGER);
+        calculator.calculate();
+
+        expect(calculator.hasError).toBe(true);
+        expect(calculator.currentValue).toBe('Number too large');
+      });
+
+      test('should handle very small division result', () => {
+        calculator.appendDigit('1');
+        calculator.setOperation('/');
+        calculator.currentValue = '999999999999999';
+        calculator.calculate();
+
+        expect(calculator.hasError).toBe(false);
+        expect(parseFloat(calculator.currentValue)).toBeGreaterThan(0);
+      });
+    });
+
+    describe('State Consistency', () => {
+      test('should maintain consistent state after error', () => {
+        calculator.appendDigit('5');
+        calculator.setOperation('/');
+        calculator.appendDigit('0');
+        calculator.calculate();
+
+        expect(calculator.hasError).toBe(true);
+        expect(calculator.previousValue).toBeNull();
+        expect(calculator.operation).toBeNull();
+      });
+
+      test('should maintain consistent state after clear', () => {
+        calculator.appendDigit('5');
+        calculator.setOperation('+');
+        calculator.appendDigit('3');
+        calculator.clear();
+
+        expect(calculator.currentValue).toBe('0');
+        expect(calculator.previousValue).toBeNull();
+        expect(calculator.operation).toBeNull();
+        expect(calculator.shouldResetDisplay).toBe(false);
+        expect(calculator.hasError).toBe(false);
+      });
+
+      test('should maintain consistent state during chained operations', () => {
+        calculator.appendDigit('5');
+        calculator.setOperation('+');
+        calculator.appendDigit('3');
+        calculator.setOperation('*');
+
+        expect(calculator.currentValue).toBe('8');
+        expect(calculator.operation).toBe('*');
+        expect(calculator.shouldResetDisplay).toBe(true);
+      });
+    });
+
+    describe('Display Element Handling', () => {
+      test('should handle missing display element gracefully', () => {
+        calculator.displayElement = null;
+
+        expect(() => calculator.updateDisplay()).not.toThrow();
+      });
+
+      test('should handle missing buttons container gracefully', () => {
+        document.body.innerHTML = '<div class="display">0</div>';
+        const newCalc = new Calculator();
+
+        expect(newCalc.displayElement).toBeNull();
+      });
+
+      test('should initialize without DOM elements', () => {
+        document.body.innerHTML = '';
+        const newCalc = new Calculator();
+
+        expect(newCalc.currentValue).toBe('0');
+        expect(newCalc.displayElement).toBeNull();
+      });
+    });
+
+    describe('Button Click Edge Cases', () => {
+      test('should handle click on non-button element', () => {
+        const event = { target: mockButtonsContainer };
+        calculator.handleButtonClick(event);
+
+        expect(calculator.currentValue).toBe('0');
+      });
+
+      test('should handle click with no dataset', () => {
+        const button = document.createElement('button');
+        mockButtonsContainer.appendChild(button);
+
+        const event = { target: button };
+        calculator.handleButtonClick(event);
+
+        expect(calculator.currentValue).toBe('0');
+      });
+
+      test('should handle button click in error state', () => {
+        calculator.handleError('CALCULATION_ERROR');
+
+        const button = document.querySelector('[data-number="5"]');
+        button.click();
+
+        expect(calculator.currentValue).toBe('Calculation error');
+      });
+
+      test('should allow clear button in error state', () => {
+        calculator.handleError('CALCULATION_ERROR');
+
+        const clearButton = document.querySelector('[data-action="clear"]');
+        clearButton.click();
+
+        expect(calculator.hasError).toBe(false);
+        expect(calculator.currentValue).toBe('0');
+      });
+    });
+
+    describe('Keyboard Event Edge Cases', () => {
+      test('should handle keyboard event without key property', () => {
+        const event = new KeyboardEvent('keydown', {});
+        const initialValue = calculator.currentValue;
+
+        document.dispatchEvent(event);
+
+        expect(calculator.currentValue).toBe(initialValue);
+      });
+
+      test('should handle getButtonForKey with invalid action', () => {
+        const button = calculator.getButtonForKey({
+          type: 'invalid',
+          value: 'test',
+        });
+
+        expect(button).toBeNull();
+      });
+
+      test('should handle visualFeedback with null button', () => {
+        expect(() => calculator.visualFeedback(null)).not.toThrow();
+      });
+
+      test('should handle keyboard input without display element', () => {
+        calculator.displayElement = null;
+
         const event = new KeyboardEvent('keydown', { key: '5' });
         document.dispatchEvent(event);
+
+        expect(calculator.currentValue).toBe('5');
+      });
+    });
+
+    describe('Calculation Edge Cases', () => {
+      test('should handle calculation with invalid current value', () => {
+        calculator.previousValue = 5;
+        calculator.operation = '+';
+        calculator.currentValue = 'invalid';
+
+        calculator.calculate();
+
+        expect(calculator.previousValue).toBe(5);
+        expect(calculator.operation).toBe('+');
+      });
+
+      test('should handle calculation error exception', () => {
+        calculator.previousValue = 5;
+        calculator.operation = '+';
+        calculator.currentValue = '3';
+
+        // Mock add to throw error
+        calculator.add = jest.fn(() => {
+          throw new Error('Test error');
+        });
+
+        calculator.calculate();
+
+        expect(calculator.hasError).toBe(true);
+        expect(calculator.currentValue).toBe('Calculation error');
+      });
+
+      test('should handle null result from divide', () => {
+        calculator.previousValue = 5;
+        calculator.operation = '/';
+        calculator.currentValue = '0';
+
+        calculator.calculate();
+
+        expect(calculator.hasError).toBe(true);
+      });
+    });
+
+    describe('Number Formatting Edge Cases', () => {
+      test('should format number with many decimal places', () => {
+        const number = 1.123456789012345;
+        const formatted = calculator.formatNumber(number);
+
+        expect(formatted).toBeDefined();
+        expect(typeof formatted).toBe('string');
+      });
+
+      test('should handle negative zero', () => {
+        const formatted = calculator.formatNumber(-0);
+        expect(formatted).toBe('0');
+      });
+
+      test('should handle very long number string', () => {
+        const longNumber = '12345678901234567890';
+        const formatted = calculator.formatNumber(parseFloat(longNumber));
+
+        expect(formatted.length).toBeLessThanOrEqual(20);
+      });
+    });
+  });
+
+  // ============================================================================
+  // 📊 COVERAGE COMPLETION TESTS
+  // ============================================================================
+
+  describe('Coverage Completion', () => {
+    describe('Arithmetic Operations', () => {
+      test('should perform addition correctly', () => {
+        const result = calculator.add(5, 3);
+        expect(result).toBe(8);
+      });
+
+      test('should perform subtraction correctly', () => {
+        const result = calculator.subtract(10, 4);
+        expect(result).toBe(6);
+      });
+
+      test('should perform multiplication correctly', () => {
+        const result = calculator.multiply(6, 7);
+        expect(result).toBe(42);
+      });
+
+      test('should perform division correctly', () => {
+        const result = calculator.divide(20, 4);
+        expect(result).toBe(5);
+      });
+
+      test('should handle division by zero in divide method', () => {
+        const result = calculator.divide(5, 0);
+        expect(result).toBeNull();
+        expect(calculator.hasError).toBe(true);
+      });
+    });
+
+    describe('Display Error Method', () => {
+      test('should display custom error message', () => {
+        calculator.displayError('Custom Error');
+
+        expect(calculator.hasError).toBe(true);
+        expect(calculator.currentValue).toBe('Custom Error');
+        expect(calculator.previousValue).toBeNull();
+        expect(calculator.operation).toBeNull();
+      });
+
+      test('should update display with error message', () => {
+        calculator.displayError('Test Error');
+        expect(mockDisplay.textContent).toBe('Test Error');
+      });
+    });
+
+    describe('isValidNumber Method', () => {
+      test('should validate valid positive number', () => {
+        expect(calculator.isValidNumber(42)).toBe(true);
+      });
+
+      test('should validate valid negative number', () => {
+        expect(calculator.isValidNumber(-42)).toBe(true);
+      });
+
+      test('should validate zero', () => {
+        expect(calculator.isValidNumber(0)).toBe(true);
+      });
+
+      test('should reject NaN', () => {
+        expect(calculator.isValidNumber(NaN)).toBe(false);
+      });
+
+      test('should reject Infinity', () => {
+        expect(calculator.isValidNumber(Infinity)).toBe(false);
+      });
+
+      test('should reject number above MAX_SAFE_NUMBER', () => {
+        expect(calculator.isValidNumber(Number.MAX_SAFE_INTEGER + 1)).toBe(
+          false
+        );
+      });
+
+      test('should reject number below MIN_SAFE_NUMBER', () => {
+        expect(calculator.isValidNumber(Number.MIN_SAFE_INTEGER - 1)).toBe(
+          false
+        );
+      });
+    });
+
+    describe('Event Listener Setup', () => {
+      test('should setup event delegation on DOMContentLoaded', (done) => {
+        document.body.innerHTML = '';
+
+        // Simulate loading state
+        Object.defineProperty(document, 'readyState', {
+          writable: true,
+          value: 'loading',
+        });
+
+        const newCalc = new Calculator();
+
+        // Trigger DOMContentLoaded
+        document.body.innerHTML = `
+          <div class="calculator">
+            <div class="display">0</div>
+            <div class="buttons">
+              <button data-number="5">5</button>
+            </div>
+          </div>
+        `;
+
+        const event = new Event('DOMContentLoaded');
+        document.dispatchEvent(event);
+
+        setTimeout(() => {
+          expect(newCalc.displayElement).toBeDefined();
+          done();
+        }, 100);
+      });
+
+      test('should handle Enter key on button', () => {
+        const button = document.querySelector('[data-number="5"]');
+        const event = new KeyboardEvent('keydown', {
+          key: 'Enter',
+          bubbles: true,
+        });
+
+        Object.defineProperty(event, 'target', {
+          value: button,
+          writable: false,
+        });
+
+        const preventDefaultSpy = jest.spyOn(event, 'preventDefault');
+
+        button.dispatchEvent(event);
+
+        expect(preventDefaultSpy).toHaveBeenCalled();
+      });
+
+      test('should handle Space key on button', () => {
+        const button = document.querySelector('[data-number="5"]');
+        const event = new KeyboardEvent('keydown', {
+          key: ' ',
+          bubbles: true,
+        });
+
+        Object.defineProperty(event, 'target', {
+          value: button,
+          writable: false,
+        });
+
+        const preventDefaultSpy = jest.spyOn(event, 'preventDefault');
+
+        button.dispatchEvent(event);
+
+        expect(preventDefaultSpy).toHaveBeenCalled();
+      });
+    });
+
+    describe('Operation Chaining', () => {
+      test('should chain operations without shouldResetDisplay', () => {
+        calculator.appendDigit('5');
+        calculator.setOperation('+');
+        calculator.shouldResetDisplay = false;
+        calculator.appendDigit('3');
+        calculator.setOperation('*');
+
+        expect(calculator.currentValue).toBe('8');
+        expect(calculator.operation).toBe('*');
+      });
+
+      test('should handle operation change with shouldResetDisplay', () => {
+        calculator.appendDigit('5');
+        calculator.setOperation('+');
+        calculator.shouldResetDisplay = true;
+        calculator.setOperation('*');
+
+        expect(calculator.operation).toBe('*');
+        expect(calculator.previousValue).toBe(5);
+      });
+    });
+
+    describe('Decimal Handling', () => {
+      test('should handle decimal with empty current value', () => {
+        calculator.currentValue = '';
+        calculator.appendDigit('.');
+
+        expect(calculator.currentValue).toBe('0.');
+      });
+
+      test('should build number after decimal', () => {
+        calculator.appendDigit('.');
+        calculator.appendDigit('5');
+
+        expect(calculator.currentValue).toBe('0.5');
+      });
+    });
+
+    describe('Visual Feedback Timing', () => {
+      test('should remove active class after 150ms', (done) => {
+        const button = document.querySelector('[data-number="5"]');
+
+        calculator.visualFeedback(button);
+
+        expect(button.classList.contains('active')).toBe(true);
+
+        setTimeout(() => {
+          expect(button.classList.contains('active')).toBe(false);
+          done();
+        }, 200);
+      });
+    });
+
+    describe('Calculate with Error Handling', () => {
+      test('should not calculate in error state', () => {
+        calculator.handleError('CALCULATION_ERROR');
+        calculator.previousValue = 5;
+        calculator.operation = '+';
+        calculator.currentValue = '3';
+
+        calculator.calculate();
+
+        expect(calculator.currentValue).toBe('Calculation error');
+      });
+
+      test('should handle unknown operation in calculate', () => {
+        calculator.previousValue = 5;
+        calculator.operation = 'unknown';
+        calculator.currentValue = '3';
+
+        calculator.calculate();
+
+        expect(calculator.currentValue).toBe('3');
+      });
+    });
+  });
+
+  // ============================================================================
+  // ⚡ PERFORMANCE TESTS
+  // ============================================================================
+
+  describe('Performance Tests', () => {
+    test('should handle 1000 operations efficiently', () => {
+      const startTime = performance.now();
+
+      for (let i = 0; i < 1000; i++) {
+        calculator.clear();
+        calculator.appendDigit('5');
+        calculator.setOperation('+');
+        calculator.appendDigit('3');
+        calculator.calculate();
+      }
+
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+
+      expect(duration).toBeLessThan(1000);
+      expect(calculator.currentValue).toBe('8');
+    });
+
+    test('should handle rapid state changes', () => {
+      const startTime = performance.now();
+
+      for (let i = 0; i < 500; i++) {
+        calculator.appendDigit(String(i % 10));
+        if (i % 10 === 0) calculator.clear();
       }
 
       const endTime = performance.now();
       const duration = endTime - startTime;
 
       expect(duration).toBeLessThan(500);
-      expect(calculator.currentValue.length).toBeLessThanOrEqual(15);
     });
 
-    test('should respect maximum display length on keyboard input', () => {
-      const longSequence = '123456789012345';
-
-      for (const digit of longSequence) {
-        const event = new KeyboardEvent('keydown', { key: digit });
-        document.dispatchEvent(event);
-      }
-
-      expect(calculator.currentValue).toBe(longSequence);
-
-      const extraEvent = new KeyboardEvent('keydown', { key: '6' });
-      document.dispatchEvent(extraEvent);
-
-      expect(calculator.currentValue).toBe(longSequence);
-    });
-
-    test('should handle zero key press multiple times', () => {
-      const event1 = new KeyboardEvent('keydown', { key: '0' });
-      document.dispatchEvent(event1);
-      expect(calculator.currentValue).toBe('0');
-
-      const event2 = new KeyboardEvent('keydown', { key: '0' });
-      document.dispatchEvent(event2);
-      expect(calculator.currentValue).toBe('0');
-    });
-
-    test('should build number after operation key press', () => {
-      const num1Event = new KeyboardEvent('keydown', { key: '5' });
-      document.dispatchEvent(num1Event);
-
-      const opEvent = new KeyboardEvent('keydown', { key: '+' });
-      document.dispatchEvent(opEvent);
-
-      const num2Event = new KeyboardEvent('keydown', { key: '3' });
-      document.dispatchEvent(num2Event);
-
-      expect(calculator.currentValue).toBe('3');
-      expect(calculator.previousValue).toBe(5);
-      expect(calculator.operation).toBe('+');
-    });
-  });
-
-  // ============================================================================
-  // ➕➖✖️➗ OPERATION KEY INPUT TESTS
-  // ============================================================================
-
-  describe('Operation Key Input (+, -, *, /)', () => {
-    test('should handle addition key (+)', () => {
-      const numEvent = new KeyboardEvent('keydown', { key: '5' });
-      document.dispatchEvent(numEvent);
-
-      const opEvent = new KeyboardEvent('keydown', { key: '+' });
-      document.dispatchEvent(opEvent);
-
-      expect(calculator.operation).toBe('+');
-      expect(calculator.previousValue).toBe(5);
-      expect(calculator.shouldResetDisplay).toBe(true);
-    });
-
-    test('should handle subtraction key (-)', () => {
-      const numEvent = new KeyboardEvent('keydown', { key: '8' });
-      document.dispatchEvent(numEvent);
-
-      const opEvent = new KeyboardEvent('keydown', { key: '-' });
-      document.dispatchEvent(opEvent);
-
-      expect(calculator.operation).toBe('-');
-      expect(calculator.previousValue).toBe(8);
-    });
-
-    test('should handle multiplication key (*)', () => {
-      const numEvent = new KeyboardEvent('keydown', { key: '6' });
-      document.dispatchEvent(numEvent);
-
-      const opEvent = new KeyboardEvent('keydown', { key: '*' });
-      document.dispatchEvent(opEvent);
-
-      expect(calculator.operation).toBe('*');
-      expect(calculator.previousValue).toBe(6);
-    });
-
-    test('should handle division key (/)', () => {
-      const numEvent = new KeyboardEvent('keydown', { key: '9' });
-      document.dispatchEvent(numEvent);
-
-      const opEvent = new KeyboardEvent('keydown', { key: '/' });
-      document.dispatchEvent(opEvent);
-
-      expect(calculator.operation).toBe('/');
-      expect(calculator.previousValue).toBe(9);
-    });
-
-    test('should chain operations with keyboard input', () => {
-      // 5 + 3 * 2
-      const events = [
-        { key: '5' },
-        { key: '+' },
-        { key: '3' },
-        { key: '*' },
-      ];
-
-      events.forEach((eventData) => {
-        const event = new KeyboardEvent('keydown', eventData);
-        document.dispatchEvent(event);
-      });
-
-      expect(calculator.currentValue).toBe('8');
-      expect(calculator.operation).toBe('*');
-    });
-
-    test('should handle operation key change before second operand', () => {
-      const num1Event = new KeyboardEvent('keydown', { key: '5' });
-      document.dispatchEvent(num1Event);
-
-      const op1Event = new KeyboardEvent('keydown', { key: '+' });
-      document.dispatchEvent(op1Event);
-
-      const op2Event = new KeyboardEvent('keydown', { key: '*' });
-      document.dispatchEvent(op2Event);
-
-      expect(calculator.operation).toBe('*');
-      expect(calculator.previousValue).toBe(5);
-    });
-
-    test('should prevent operation in error state', () => {
-      calculator.displayError('Test Error');
-
-      const opEvent = new KeyboardEvent('keydown', { key: '+' });
-      document.dispatchEvent(opEvent);
-
-      expect(calculator.operation).toBeNull();
-    });
-
-    test('should provide visual feedback for operation keys', () => {
-      const button = document.querySelector('[data-operation="+"]');
-      const classListSpy = jest.spyOn(button.classList, 'add');
-
-      const event = new KeyboardEvent('keydown', { key: '+' });
-      document.dispatchEvent(event);
-
-      expect(classListSpy).toHaveBeenCalledWith('active');
-    });
-  });
-
-  // ============================================================================
-  // 🟰 ENTER KEY (EQUALS) TESTS
-  // ============================================================================
-
-  describe('Enter Key (Equals)', () => {
-    test('should calculate result on Enter key press', () => {
-      const events = [
-        { key: '5' },
-        { key: '+' },
-        { key: '3' },
-        { key: 'Enter' },
-      ];
-
-      events.forEach((eventData) => {
-        const event = new KeyboardEvent('keydown', eventData);
-        document.dispatchEvent(event);
-      });
-
-      expect(calculator.currentValue).toBe('8');
-      expect(calculator.operation).toBeNull();
-      expect(calculator.previousValue).toBeNull();
-    });
-
-    test('should handle equals key (=) as alternative to Enter', () => {
-      const events = [
-        { key: '6' },
-        { key: '*' },
-        { key: '7' },
-        { key: '=' },
-      ];
-
-      events.forEach((eventData) => {
-        const event = new KeyboardEvent('keydown', eventData);
-        document.dispatchEvent(event);
-      });
-
-      expect(calculator.currentValue).toBe('42');
-    });
-
-    test('should do nothing on Enter if no operation set', () => {
-      const numEvent = new KeyboardEvent('keydown', { key: '5' });
-      document.dispatchEvent(numEvent);
-
-      const enterEvent = new KeyboardEvent('keydown', { key: 'Enter' });
-      document.dispatchEvent(enterEvent);
-
-      expect(calculator.currentValue).toBe('5');
-      expect(calculator.operation).toBeNull();
-    });
-
-    test('should handle Enter key in error state', () => {
-      calculator.displayError('Error');
-
-      const enterEvent = new KeyboardEvent('keydown', { key: 'Enter' });
-      document.dispatchEvent(enterEvent);
-
-      expect(calculator.currentValue).toBe('Error');
-      expect(calculator.hasError).toBe(true);
-    });
-
-    test('should allow new calculation after Enter', () => {
-      const events = [
-        { key: '5' },
-        { key: '+' },
-        { key: '3' },
-        { key: 'Enter' },
-        { key: '*' },
-        { key: '2' },
-        { key: 'Enter' },
-      ];
-
-      events.forEach((eventData) => {
-        const event = new KeyboardEvent('keydown', eventData);
-        document.dispatchEvent(event);
-      });
-
-      expect(calculator.currentValue).toBe('16');
-    });
-
-    test('should prevent default behavior on Enter key', () => {
-      const event = new KeyboardEvent('keydown', { key: 'Enter' });
-      const preventDefaultSpy = jest.spyOn(event, 'preventDefault');
-
-      document.dispatchEvent(event);
-
-      expect(preventDefaultSpy).toHaveBeenCalled();
-    });
-
-    test('should provide visual feedback for Enter key', () => {
-      const button = document.querySelector('[data-operation="="]');
-      const classListSpy = jest.spyOn(button.classList, 'add');
-
-      const events = [
-        { key: '5' },
-        { key: '+' },
-        { key: '3' },
-        { key: 'Enter' },
-      ];
-
-      events.forEach((eventData) => {
-        const event = new KeyboardEvent('keydown', eventData);
-        document.dispatchEvent(event);
-      });
-
-      expect(classListSpy).toHaveBeenCalledWith('active');
-    });
-  });
-
-  // ============================================================================
-  // 🧹 ESCAPE KEY (CLEAR) TESTS
-  // ============================================================================
-
-  describe('Escape Key (Clear)', () => {
-    test('should clear calculator on Escape key press', () => {
-      const events = [
-        { key: '5' },
-        { key: '+' },
-        { key: '3' },
-        { key: 'Escape' },
-      ];
-
-      events.forEach((eventData) => {
-        const event = new KeyboardEvent('keydown', eventData);
-        document.dispatchEvent(event);
-      });
-
-      expect(calculator.currentValue).toBe('0');
-      expect(calculator.previousValue).toBeNull();
-      expect(calculator.operation).toBeNull();
-      expect(calculator.shouldResetDisplay).toBe(false);
-    });
-
-    test('should clear error state on Escape', () => {
-      calculator.displayError('Test Error');
-
-      const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape' });
-      document.dispatchEvent(escapeEvent);
-
-      expect(calculator.hasError).toBe(false);
-      expect(calculator.currentValue).toBe('0');
-    });
-
-    test('should reset display to 0 on Escape', () => {
-      const events = [
-        { key: '9' },
-        { key: '9' },
-        { key: '9' },
-        { key: 'Escape' },
-      ];
-
-      events.forEach((eventData) => {
-        const event = new KeyboardEvent('keydown', eventData);
-        document.dispatchEvent(event);
-      });
-
-      expect(mockDisplay.textContent).toBe('0');
-    });
-
-    test('should allow new input after Escape', () => {
-      const events = [
-        { key: '5' },
-        { key: '+' },
-        { key: '3' },
-        { key: 'Escape' },
-        { key: '7' },
-      ];
-
-      events.forEach((eventData) => {
-        const event = new KeyboardEvent('keydown', eventData);
-        document.dispatchEvent(event);
-      });
-
-      expect(calculator.currentValue).toBe('7');
-    });
-
-    test('should prevent default behavior on Escape key', () => {
-      const event = new KeyboardEvent('keydown', { key: 'Escape' });
-      const preventDefaultSpy = jest.spyOn(event, 'preventDefault');
-
-      document.dispatchEvent(event);
-
-      expect(preventDefaultSpy).toHaveBeenCalled();
-    });
-
-    test('should provide visual feedback for Escape key', () => {
-      const button = document.querySelector('[data-action="clear"]');
-      const classListSpy = jest.spyOn(button.classList, 'add');
-
-      const event = new KeyboardEvent('keydown', { key: 'Escape' });
-      document.dispatchEvent(event);
-
-      expect(classListSpy).toHaveBeenCalledWith('active');
-    });
-  });
-
-  // ============================================================================
-  // 🔘 DECIMAL POINT KEY TESTS
-  // ============================================================================
-
-  describe('Decimal Point Key', () => {
-    test('should add decimal point on period key press', () => {
-      const events = [
-        { key: '5' },
-        { key: '.' },
-      ];
-
-      events.forEach((eventData) => {
-        const event = new KeyboardEvent('keydown', eventData);
-        document.dispatchEvent(event);
-      });
-
-      expect(calculator.currentValue).toBe('5.');
-    });
-
-    test('should add 0 before decimal if starting with period', () => {
-      const event = new KeyboardEvent('keydown', { key: '.' });
-      document.dispatchEvent(event);
-
-      expect(calculator.currentValue).toBe('0.');
-    });
-
-    test('should prevent multiple decimal points via keyboard', () => {
-      const events = [
-        { key: '5' },
-        { key: '.' },
-        { key: '2' },
-        { key: '.' },
-      ];
-
-      events.forEach((eventData) => {
-        const event = new KeyboardEvent('keydown', eventData);
-        document.dispatchEvent(event);
-      });
-
-      expect(calculator.currentValue).toBe('5.2');
-    });
-
-    test('should build decimal number from keyboard', () => {
-      const events = [
-        { key: '1' },
-        { key: '2' },
-        { key: '.' },
-        { key: '5' },
-        { key: '6' },
-      ];
-
-      events.forEach((eventData) => {
-        const event = new KeyboardEvent('keydown', eventData);
-        document.dispatchEvent(event);
-      });
-
-      expect(calculator.currentValue).toBe('12.56');
-    });
-
-    test('should handle decimal in calculation workflow', () => {
-      const events = [
-        { key: '1' },
-        { key: '.' },
-        { key: '5' },
-        { key: '+' },
-        { key: '2' },
-        { key: '.' },
-        { key: '5' },
-        { key: 'Enter' },
-      ];
-
-      events.forEach((eventData) => {
-        const event = new KeyboardEvent('keydown', eventData);
-        document.dispatchEvent(event);
-      });
-
-      expect(parseFloat(calculator.currentValue)).toBe(4);
-    });
-  });
-
-  // ============================================================================
-  // ❌ INVALID KEY HANDLING TESTS
-  // ============================================================================
-
-  describe('Invalid Key Handling', () => {
-    test('should ignore alphabetic keys', () => {
-      const invalidKeys = ['a', 'b', 'c', 'x', 'y', 'z', 'A', 'Z'];
-
-      invalidKeys.forEach((key) => {
-        calculator.clear();
-        const initialValue = calculator.currentValue;
-
-        const event = new KeyboardEvent('keydown', { key });
-        document.dispatchEvent(event);
-
-        expect(calculator.currentValue).toBe(initialValue);
-      });
-    });
-
-    test('should ignore special characters', () => {
-      const invalidKeys = ['!', '@', '#', '$', '%', '^', '&', '(', ')'];
-
-      invalidKeys.forEach((key) => {
-        calculator.clear();
-        const initialValue = calculator.currentValue;
-
-        const event = new KeyboardEvent('keydown', { key });
-        document.dispatchEvent(event);
-
-        expect(calculator.currentValue).toBe(initialValue);
-      });
-    });
-
-    test('should ignore function keys', () => {
-      const functionKeys = ['F1', 'F2', 'F12', 'Tab', 'Shift', 'Control', 'Alt'];
-
-      functionKeys.forEach((key) => {
-        calculator.clear();
-        const initialValue = calculator.currentValue;
-
-        const event = new KeyboardEvent('keydown', { key });
-        document.dispatchEvent(event);
-
-        expect(calculator.currentValue).toBe(initialValue);
-      });
-    });
-
-    test('should ignore arrow keys', () => {
-      const arrowKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
-
-      arrowKeys.forEach((key) => {
-        calculator.clear();
-        const initialValue = calculator.currentValue;
-
-        const event = new KeyboardEvent('keydown', { key });
-        document.dispatchEvent(event);
-
-        expect(calculator.currentValue).toBe(initialValue);
-      });
-    });
-
-    test('should not prevent default for invalid keys', () => {
-      const event = new KeyboardEvent('keydown', { key: 'a' });
-      const preventDefaultSpy = jest.spyOn(event, 'preventDefault');
-
-      document.dispatchEvent(event);
-
-      expect(preventDefaultSpy).not.toHaveBeenCalled();
-    });
-
-    test('should ignore space key (except on buttons)', () => {
-      const initialValue = calculator.currentValue;
-
-      const event = new KeyboardEvent('keydown', { key: ' ' });
-      document.dispatchEvent(event);
-
-      expect(calculator.currentValue).toBe(initialValue);
-    });
-  });
-
-  // ============================================================================
-  // ⚡ RAPID KEY PRESS TESTS
-  // ============================================================================
-
-  describe('Rapid Key Presses', () => {
-    test('should handle rapid number key presses without errors', () => {
-      const startTime = performance.now();
-
-      for (let i = 0; i < 100; i++) {
-        const event = new KeyboardEvent('keydown', { key: '5' });
-        document.dispatchEvent(event);
-      }
-
-      const endTime = performance.now();
-      const duration = endTime - startTime;
-
-      expect(duration).toBeLessThan(1000);
-      expect(calculator.hasError).toBe(false);
-    });
-
-    test('should handle rapid operation key presses', () => {
-      calculator.appendDigit('5');
-
-      const operations = ['+', '-', '*', '/'];
-      operations.forEach((op) => {
-        const event = new KeyboardEvent('keydown', { key: op });
-        document.dispatchEvent(event);
-      });
-
-      expect(calculator.operation).toBe('/');
-      expect(calculator.hasError).toBe(false);
-    });
-
-    test('should handle alternating number and operation keys', () => {
-      const keys = ['5', '+', '3', '-', '2', '*', '4', '/', '2'];
-
-      keys.forEach((key) => {
-        const event = new KeyboardEvent('keydown', { key });
-        document.dispatchEvent(event);
-      });
-
-      expect(calculator.hasError).toBe(false);
-      expect(calculator.operation).toBe('/');
-    });
-
-    test('should handle rapid Enter key presses', () => {
-      calculator.appendDigit('5');
-      calculator.setOperation('+');
-      calculator.appendDigit('3');
-
-      for (let i = 0; i < 10; i++) {
-        const event = new KeyboardEvent('keydown', { key: 'Enter' });
-        document.dispatchEvent(event);
-      }
-
-      expect(calculator.currentValue).toBe('8');
-      expect(calculator.hasError).toBe(false);
-    });
-
-    test('should handle rapid Escape key presses', () => {
-      for (let i = 0; i < 20; i++) {
-        calculator.appendDigit('5');
-        const event = new KeyboardEvent('keydown', { key: 'Escape' });
-        document.dispatchEvent(event);
-      }
-
-      expect(calculator.currentValue).toBe('0');
-      expect(calculator.hasError).toBe(false);
-    });
-
-    test('should maintain state consistency during rapid input', () => {
-      const events = [
-        { key: '1' },
-        { key: '2' },
-        { key: '+' },
-        { key: '3' },
-        { key: '4' },
-        { key: 'Enter' },
-      ];
-
-      // Repeat sequence rapidly
-      for (let i = 0; i < 5; i++) {
-        calculator.clear();
-        events.forEach((eventData) => {
-          const event = new KeyboardEvent('keydown', eventData);
-          document.dispatchEvent(event);
-        });
-      }
-
-      expect(calculator.currentValue).toBe('46');
-      expect(calculator.hasError).toBe(false);
-    });
-  });
-
-  // ============================================================================
-  // 🎭 KEYBOARD EVENT OBJECT MOCKING TESTS
-  // ============================================================================
-
-  describe('KeyboardEvent Object Mocking', () => {
-    test('should handle KeyboardEvent with all properties', () => {
-      const event = new KeyboardEvent('keydown', {
-        key: '5',
-        code: 'Digit5',
-        keyCode: 53,
-        which: 53,
-        bubbles: true,
-        cancelable: true,
-      });
-
-      document.dispatchEvent(event);
-
-      expect(calculator.currentValue).toBe('5');
-    });
-
-    test('should extract key property from event', () => {
-      const event = new KeyboardEvent('keydown', { key: '7' });
-
-      expect(event.key).toBe('7');
-
-      document.dispatchEvent(event);
-
-      expect(calculator.currentValue).toBe('7');
-    });
-
-    test('should handle event with modifier keys (should be ignored)', () => {
-      const event = new KeyboardEvent('keydown', {
-        key: '5',
-        ctrlKey: true,
-        shiftKey: false,
-        altKey: false,
-      });
-
-      document.dispatchEvent(event);
-
-      expect(calculator.currentValue).toBe('5');
-    });
-
-    test('should handle event bubbling correctly', () => {
-      const event = new KeyboardEvent('keydown', {
-        key: '3',
-        bubbles: true,
-      });
-
-      const bubbleSpy = jest.spyOn(event, 'stopPropagation');
-      document.dispatchEvent(event);
-
-      expect(calculator.currentValue).toBe('3');
-    });
-
-    test('should handle event with target element', () => {
-      const button = document.querySelector('[data-number="5"]');
-      const event = new KeyboardEvent('keydown', {
-        key: '5',
-        target: button,
-      });
-
-      document.dispatchEvent(event);
-
-      expect(calculator.currentValue).toBe('5');
-    });
-
-    test('should handle event with timestamp', () => {
-      const event = new KeyboardEvent('keydown', {
-        key: '9',
-        timeStamp: Date.now(),
-      });
-
-      document.dispatchEvent(event);
-
-      expect(calculator.currentValue).toBe('9');
-    });
-  });
-
-  // ============================================================================
-  // 🎯 VISUAL FEEDBACK TESTS
-  // ============================================================================
-
-  describe('Visual Feedback for Keyboard Input', () => {
-    test('should add active class to button on key press', () => {
-      const button = document.querySelector('[data-number="5"]');
-      const classListSpy = jest.spyOn(button.classList, 'add');
-
-      const event = new KeyboardEvent('keydown', { key: '5' });
-      document.dispatchEvent(event);
-
-      expect(classListSpy).toHaveBeenCalledWith('active');
-    });
-
-    test('should remove active class after timeout', (done) => {
-      const button = document.querySelector('[data-number="5"]');
-
-      const event = new KeyboardEvent('keydown', { key: '5' });
-      document.dispatchEvent(event);
-
-      expect(button.classList.contains('active')).toBe(true);
-
-      setTimeout(() => {
-        expect(button.classList.contains('active')).toBe(false);
-        done();
-      }, 200);
-    });
-
-    test('should provide feedback for all operation keys', () => {
-      const operations = ['+', '-', '*', '/'];
-
-      operations.forEach((op) => {
-        calculator.clear();
-        calculator.appendDigit('5');
-
-        const button = document.querySelector(`[data-operation="${op}"]`);
-        const classListSpy = jest.spyOn(button.classList, 'add');
-
-        const event = new KeyboardEvent('keydown', { key: op });
-        document.dispatchEvent(event);
-
-        expect(classListSpy).toHaveBeenCalledWith('active');
-      });
-    });
-
-    test('should not provide feedback for invalid keys', () => {
-      const buttons = document.querySelectorAll('button');
-      const spies = Array.from(buttons).map((btn) =>
-        jest.spyOn(btn.classList, 'add')
-      );
-
-      const event = new KeyboardEvent('keydown', { key: 'x' });
-      document.dispatchEvent(event);
-
-      spies.forEach((spy) => {
-        expect(spy).not.toHaveBeenCalledWith('active');
-      });
-    });
-
-    test('should handle visual feedback when button not found', () => {
-      // Mock scenario where button doesn't exist
-      const originalQuerySelector = document.querySelector;
-      document.querySelector = jest.fn(() => null);
-
-      const event = new KeyboardEvent('keydown', { key: '5' });
-
-      expect(() => document.dispatchEvent(event)).not.toThrow();
-
-      document.querySelector = originalQuerySelector;
-    });
-  });
-
-  // ============================================================================
-  // 🔄 COMPLETE KEYBOARD WORKFLOW TESTS
-  // ============================================================================
-
-  describe('Complete Keyboard Workflows', () => {
-    test('should complete full calculation using only keyboard', () => {
-      const events = [
-        { key: '1' },
-        { key: '5' },
-        { key: '+' },
-        { key: '2' },
-        { key: '5' },
-        { key: 'Enter' },
-      ];
-
-      events.forEach((eventData) => {
-        const event = new KeyboardEvent('keydown', eventData);
-        document.dispatchEvent(event);
-      });
-
-      expect(calculator.currentValue).toBe('40');
-    });
-
-    test('should handle complex calculation workflow', () => {
-      // (12.5 + 7.5) * 2 / 4 = 10
-      const events = [
-        { key: '1' },
-        { key: '2' },
-        { key: '.' },
-        { key: '5' },
-        { key: '+' },
-        { key: '7' },
-        { key: '.' },
-        { key: '5' },
-        { key: '*' },
-        { key: '2' },
-        { key: '/' },
-        { key: '4' },
-        { key: 'Enter' },
-      ];
-
-      events.forEach((eventData) => {
-        const event = new KeyboardEvent('keydown', eventData);
-        document.dispatchEvent(event);
-      });
-
-      expect(parseFloat(calculator.currentValue)).toBe(10);
-    });
-
-    test('should handle error and recovery via keyboard', () => {
-      // Division by zero, then clear and new calculation
-      const events = [
-        { key: '5' },
-        { key: '/' },
-        { key: '0' },
-        { key: 'Enter' },
-        { key: 'Escape' },
-        { key: '3' },
-        { key: '+' },
-        { key: '2' },
-        { key: 'Enter' },
-      ];
-
-      events.forEach((eventData) => {
-        const event = new KeyboardEvent('keydown', eventData);
-        document.dispatchEvent(event);
-      });
-
-      expect(calculator.currentValue).toBe('5');
-      expect(calculator.hasError).toBe(false);
-    });
-
-    test('should handle mixed mouse and keyboard input', () => {
-      // Start with keyboard
-      const keyEvent1 = new KeyboardEvent('keydown', { key: '5' });
-      document.dispatchEvent(keyEvent1);
-
-      // Continue with mouse
-      const button = document.querySelector('[data-operation="+"]');
-      button.click();
-
-      // Back to keyboard
-      const keyEvent2 = new KeyboardEvent('keydown', { key: '3' });
-      document.dispatchEvent(keyEvent2);
-
-      const keyEvent3 = new KeyboardEvent('keydown', { key: 'Enter' });
-      document.dispatchEvent(keyEvent3);
-
-      expect(calculator.currentValue).toBe('8');
-    });
-
-    test('should maintain state across multiple keyboard operations', () => {
-      const operations = [
-        { keys: ['5', '+', '3', 'Enter'], expected: '8' },
-        { keys: ['*', '2', 'Enter'], expected: '16' },
-        { keys: ['-', '6', 'Enter'], expected: '10' },
-        { keys: ['/', '2', 'Enter'], expected: '5' },
-      ];
-
-      operations.forEach(({ keys, expected }) => {
-        keys.forEach((key) => {
-          const event = new KeyboardEvent('keydown', { key });
-          document.dispatchEvent(event);
-        });
-        expect(calculator.currentValue).toBe(expected);
-      });
-    });
-  });
-
-  // ============================================================================
-  // 🛡️ EDGE CASES AND SECURITY TESTS
-  // ============================================================================
-
-  describe('Keyboard Input Edge Cases', () => {
-    test('should handle null key value', () => {
-      const event = new KeyboardEvent('keydown', { key: null });
-      const initialValue = calculator.currentValue;
-
-      document.dispatchEvent(event);
-
-      expect(calculator.currentValue).toBe(initialValue);
-    });
-
-    test('should handle undefined key value', () => {
-      const event = new KeyboardEvent('keydown', { key: undefined });
-      const initialValue = calculator.currentValue;
-
-      document.dispatchEvent(event);
-
-      expect(calculator.currentValue).toBe(initialValue);
-    });
-
-    test('should handle empty string key', () => {
-      const event = new KeyboardEvent('keydown', { key: '' });
-      const initialValue = calculator.currentValue;
-
-      document.dispatchEvent(event);
-
-      expect(calculator.currentValue).toBe(initialValue);
-    });
-
-    test('should handle very long key string', () => {
-      const longKey = 'a'.repeat(1000);
-      const event = new KeyboardEvent('keydown', { key: longKey });
-      const initialValue = calculator.currentValue;
-
-      document.dispatchEvent(event);
-
-      expect(calculator.currentValue).toBe(initialValue);
-    });
-
-    test('should handle unicode characters', () => {
-      const unicodeKeys = ['€', '£', '¥', '©', '®', '™'];
-
-      unicodeKeys.forEach((key) => {
-        calculator.clear();
-        const initialValue = calculator.currentValue;
-
-        const event = new KeyboardEvent('keydown', { key });
-        document.dispatchEvent(event);
-
-        expect(calculator.currentValue).toBe(initialValue);
-      });
-    });
-
-    test('should handle emoji keys', () => {
-      const emojiKeys = ['😀', '🎉', '🔢', '➕', '➖'];
-
-      emojiKeys.forEach((key) => {
-        calculator.clear();
-        const initialValue = calculator.currentValue;
-
-        const event = new KeyboardEvent('keydown', { key });
-        document.dispatchEvent(event);
-
-        expect(calculator.currentValue).toBe(initialValue);
-      });
-    });
-
-    test('should handle case sensitivity correctly', () => {
-      const event1 = new KeyboardEvent('keydown', { key: 'Escape' });
-      document.dispatchEvent(event1);
-      expect(calculator.currentValue).toBe('0');
-
-      calculator.appendDigit('5');
-
-      const event2 = new KeyboardEvent('keydown', { key: 'escape' });
-      document.dispatchEvent(event2);
-      expect(calculator.currentValue).toBe('5'); // Should not clear
-    });
-  });
-
-  // ============================================================================
-  // ⚡ PERFORMANCE AND STRESS TESTS
-  // ============================================================================
-
-  describe('Keyboard Input Performance', () => {
-    test('should handle 1000 sequential key presses efficiently', () => {
+    test('should update display efficiently', () => {
       const startTime = performance.now();
 
       for (let i = 0; i < 1000; i++) {
-        calculator.clear();
-        const event = new KeyboardEvent('keydown', { key: '5' });
-        document.dispatchEvent(event);
+        calculator.updateDisplay();
       }
 
       const endTime = performance.now();
       const duration = endTime - startTime;
 
-      expect(duration).toBeLessThan(2000); // Should complete in < 2 seconds
-      expect(calculator.hasError).toBe(false);
-    });
-
-    test('should handle rapid alternating key types', () => {
-      const startTime = performance.now();
-
-      for (let i = 0; i < 100; i++) {
-        const keys = ['5', '+', '3', 'Enter', 'Escape'];
-        keys.forEach((key) => {
-          const event = new KeyboardEvent('keydown', { key });
-          document.dispatchEvent(event);
-        });
-      }
-
-      const endTime = performance.now();
-      const duration = endTime - startTime;
-
-      expect(duration).toBeLessThan(1000);
-    });
-
-    test('should not leak memory with repeated key events', () => {
-      const initialMemory = performance.memory?.usedJSHeapSize || 0;
-
-      for (let i = 0; i < 500; i++) {
-        const event = new KeyboardEvent('keydown', { key: '5' });
-        document.dispatchEvent(event);
-        calculator.clear();
-      }
-
-      const finalMemory = performance.memory?.usedJSHeapSize || 0;
-      const memoryIncrease = finalMemory - initialMemory;
-
-      // Memory increase should be reasonable (< 10MB)
-      expect(memoryIncrease).toBeLessThan(10 * 1024 * 1024);
-    });
-  });
-
-  // ============================================================================
-  // 🎯 INTEGRATION WITH EXISTING FUNCTIONALITY
-  // ============================================================================
-
-  describe('Keyboard Integration with Calculator State', () => {
-    test('should respect shouldResetDisplay flag on keyboard input', () => {
-      calculator.appendDigit('5');
-      calculator.setOperation('+');
-      expect(calculator.shouldResetDisplay).toBe(true);
-
-      const event = new KeyboardEvent('keydown', { key: '3' });
-      document.dispatchEvent(event);
-
-      expect(calculator.currentValue).toBe('3');
-      expect(calculator.shouldResetDisplay).toBe(false);
-    });
-
-    test('should respect hasError flag on keyboard input', () => {
-      calculator.displayError('Error');
-
-      const event = new KeyboardEvent('keydown', { key: '5' });
-      document.dispatchEvent(event);
-
-      expect(calculator.currentValue).toBe('Error');
-    });
-
-    test('should update display correctly after keyboard input', () => {
-      const event = new KeyboardEvent('keydown', { key: '7' });
-      document.dispatchEvent(event);
-
-      expect(mockDisplay.textContent).toBe('7');
-    });
-
-    test('should maintain previousValue during keyboard operations', () => {
-      const events = [
-        { key: '5' },
-        { key: '+' },
-        { key: '3' },
-      ];
-
-      events.forEach((eventData) => {
-        const event = new KeyboardEvent('keydown', eventData);
-        document.dispatchEvent(event);
-      });
-
-      expect(calculator.previousValue).toBe(5);
-      expect(calculator.currentValue).toBe('3');
+      expect(duration).toBeLessThan(100);
     });
   });
 });

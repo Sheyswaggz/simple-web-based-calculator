@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <title>Calculator</title>
+    <meta
+      name="description"
+      content="A simple, responsive web-based calculator for basic arithmetic operations"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a href="#main" class="skip-link">Skip to main content</a>
+
+    <main id="main" role="main">
+      <div class="calculator" role="application" aria-label="Calculator">
+        <div
+          class="display"
+          role="textbox"
+          aria-label="Calculator display"
+          aria-live="polite"
+          aria-atomic="true"
+          tabindex="0"
+        >
+          0
+        </div>
+
+        <div class="buttons" role="group" aria-label="Calculator buttons">
+          <button
+            type="button"
+            class="button button-clear"
+            data-action="clear"
+            aria-label="Clear"
+          >
+            C
+          </button>
+          <button
+            type="button"
+            class="button button-operation"
+            data-operation="/"
+            aria-label="Divide"
+          >
+            ÷
+          </button>
+          <button
+            type="button"
+            class="button button-operation"
+            data-operation="*"
+            aria-label="Multiply"
+          >
+            ×
+          </button>
+          <button
+            type="button"
+            class="button button-operation"
+            data-operation="-"
+            aria-label="Subtract"
+          >
+            −
+          </button>
+
+          <button
+            type="button"
+            class="button button-number"
+            data-number="7"
+            aria-label="7"
+          >
+            7
+          </button>
+          <button
+            type="button"
+            class="button button-number"
+            data-number="8"
+            aria-label="8"
+          >
+            8
+          </button>
+          <button
+            type="button"
+            class="button button-number"
+            data-number="9"
+            aria-label="9"
+          >
+            9
+          </button>
+          <button
+            type="button"
+            class="button button-operation"
+            data-operation="+"
+            aria-label="Add"
+          >
+            +
+          </button>
+
+          <button
+            type="button"
+            class="button button-number"
+            data-number="4"
+            aria-label="4"
+          >
+            4
+          </button>
+          <button
+            type="button"
+            class="button button-number"
+            data-number="5"
+            aria-label="5"
+          >
+            5
+          </button>
+          <button
+            type="button"
+            class="button button-number"
+            data-number="6"
+            aria-label="6"
+          >
+            6
+          </button>
+          <button
+            type="button"
+            class="button button-operation button-equals"
+            data-operation="="
+            aria-label="Equals"
+          >
+            =
+          </button>
+
+          <button
+            type="button"
+            class="button button-number"
+            data-number="1"
+            aria-label="1"
+          >
+            1
+          </button>
+          <button
+            type="button"
+            class="button button-number"
+            data-number="2"
+            aria-label="2"
+          >
+            2
+          </button>
+          <button
+            type="button"
+            class="button button-number"
+            data-number="3"
+            aria-label="3"
+          >
+            3
+          </button>
+
+          <button
+            type="button"
+            class="button button-number button-zero"
+            data-number="0"
+            aria-label="0"
+          >
+            0
+          </button>
+          <button
+            type="button"
+            class="button button-number"
+            data-number="."
+            aria-label="Decimal point"
+          >
+            .
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <script src="calculator.js"></script>
+  </body>
+</html>

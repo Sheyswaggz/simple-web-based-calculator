@@ -21,6 +21,13 @@ class Calculator {
     this.MAX_SAFE_NUMBER = Number.MAX_SAFE_INTEGER;
     this.MIN_SAFE_NUMBER = Number.MIN_SAFE_INTEGER;
 
+    this.ERROR_MESSAGES = {
+      DIVIDE_BY_ZERO: 'Cannot divide by zero',
+      NUMBER_TOO_LARGE: 'Number too large',
+      INVALID_NUMBER: 'Invalid number',
+      CALCULATION_ERROR: 'Calculation error',
+    };
+
     this.keyMap = {
       '0': { type: 'number', value: '0' },
       '1': { type: 'number', value: '1' },
@@ -186,6 +193,60 @@ class Calculator {
   }
 
   /**
+   * Validate if a decimal point can be added
+   * @returns {boolean} True if decimal is valid
+   */
+  isValidDecimal() {
+    return !this.currentValue.includes('.');
+  }
+
+  /**
+   * Validate if number is valid and within safe range
+   * @param {number} value - Number to validate
+   * @returns {boolean} True if valid
+   */
+  validateNumber(value) {
+    if (typeof value !== 'number') {
+      return false;
+    }
+
+    if (isNaN(value)) {
+      return false;
+    }
+
+    if (!isFinite(value)) {
+      return false;
+    }
+
+    if (value > this.MAX_SAFE_NUMBER || value < this.MIN_SAFE_NUMBER) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Validate if operation is valid
+   * @param {string} operation - Operation to validate
+   * @returns {boolean} True if valid
+   */
+  validateOperation(operation) {
+    return ['+', '-', '*', '/'].includes(operation);
+  }
+
+  /**
+   * Handle error state
+   * @param {string} errorType - Type of error from ERROR_MESSAGES
+   */
+  handleError(errorType) {
+    this.hasError = true;
+    this.currentValue = this.ERROR_MESSAGES[errorType] || this.ERROR_MESSAGES.CALCULATION_ERROR;
+    this.previousValue = null;
+    this.operation = null;
+    this.updateDisplay();
+  }
+
+  /**
    * Append digit to current value
    * @param {string} digit - Digit or decimal point to append
    */
@@ -200,7 +261,7 @@ class Calculator {
     }
 
     if (digit === '.') {
-      if (this.currentValue.includes('.')) {
+      if (!this.isValidDecimal()) {
         return;
       }
       if (this.currentValue === '0' || this.currentValue === '') {
@@ -228,6 +289,10 @@ class Calculator {
    */
   setOperation(op) {
     if (this.hasError) {
+      return;
+    }
+
+    if (!this.validateOperation(op)) {
       return;
     }
 
@@ -291,8 +356,8 @@ class Calculator {
         return;
       }
 
-      if (!this.isValidNumber(result)) {
-        this.displayError('Number too large');
+      if (!this.validateNumber(result)) {
+        this.handleError('NUMBER_TOO_LARGE');
         return;
       }
 
@@ -302,7 +367,7 @@ class Calculator {
       this.shouldResetDisplay = true;
       this.updateDisplay();
     } catch (error) {
-      this.displayError('Calculation error');
+      this.handleError('CALCULATION_ERROR');
     }
   }
 
@@ -344,7 +409,7 @@ class Calculator {
    */
   divide(a, b) {
     if (b === 0) {
-      this.displayError('Cannot divide by zero');
+      this.handleError('DIVIDE_BY_ZERO');
       return null;
     }
     return a / b;
@@ -386,7 +451,7 @@ class Calculator {
 
     const absNum = Math.abs(num);
     
-    if (absNum >= 1e10 || (absNum < 1e-6 && absNum !== 0)) {
+    if (absNum >= 1e15 || (absNum < 1e-15 && absNum !== 0)) {
       return num.toExponential(6);
     }
 

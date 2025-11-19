@@ -88,3 +88,18 @@ The calculator supports full keyboard operation for efficient use:
 - npm
 
 ### Installation
+
+## Kubernetes Deployment
+
+Deploy the calculator application to a Kubernetes cluster with high availability and auto-scaling capabilities.
+
+### Prerequisites
+
+- `kubectl` CLI tool installed and configured
+- Access to a Kubernetes cluster (v1.19+)
+- Ingress controller installed (e.g., NGINX Ingress Controller)
+- cert-manager installed (optional, for TLS certificate management)
+
+### Deployment Instructions
+
+1. **Apply all Kubernetes manifests:**

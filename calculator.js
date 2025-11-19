@@ -21,7 +21,29 @@ class Calculator {
     this.MAX_SAFE_NUMBER = Number.MAX_SAFE_INTEGER;
     this.MIN_SAFE_NUMBER = Number.MIN_SAFE_INTEGER;
 
+    this.keyMap = {
+      '0': { type: 'number', value: '0' },
+      '1': { type: 'number', value: '1' },
+      '2': { type: 'number', value: '2' },
+      '3': { type: 'number', value: '3' },
+      '4': { type: 'number', value: '4' },
+      '5': { type: 'number', value: '5' },
+      '6': { type: 'number', value: '6' },
+      '7': { type: 'number', value: '7' },
+      '8': { type: 'number', value: '8' },
+      '9': { type: 'number', value: '9' },
+      '.': { type: 'number', value: '.' },
+      '+': { type: 'operation', value: '+' },
+      '-': { type: 'operation', value: '-' },
+      '*': { type: 'operation', value: '*' },
+      '/': { type: 'operation', value: '/' },
+      Enter: { type: 'operation', value: '=' },
+      '=': { type: 'operation', value: '=' },
+      Escape: { type: 'action', value: 'clear' },
+    };
+
     this.initializeEventListeners();
+    this.setupKeyboardListeners();
   }
 
   /**
@@ -58,6 +80,78 @@ class Calculator {
     });
 
     this.updateDisplay();
+  }
+
+  /**
+   * Setup keyboard event listeners
+   */
+  setupKeyboardListeners() {
+    document.addEventListener('keydown', (event) => {
+      this.handleKeyPress(event);
+    });
+  }
+
+  /**
+   * Handle keyboard press events
+   * @param {KeyboardEvent} event - Keyboard event
+   */
+  handleKeyPress(event) {
+    const key = event.key;
+    const keyAction = this.keyMap[key];
+
+    if (!keyAction) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const button = this.getButtonForKey(keyAction);
+    if (button) {
+      this.visualFeedback(button);
+    }
+
+    if (keyAction.type === 'number') {
+      this.appendDigit(keyAction.value);
+    } else if (keyAction.type === 'operation') {
+      if (keyAction.value === '=') {
+        this.calculate();
+      } else {
+        this.setOperation(keyAction.value);
+      }
+    } else if (keyAction.type === 'action' && keyAction.value === 'clear') {
+      this.clear();
+    }
+  }
+
+  /**
+   * Get button element corresponding to key action
+   * @param {Object} keyAction - Key action object
+   * @returns {HTMLElement|null} Button element or null
+   */
+  getButtonForKey(keyAction) {
+    if (keyAction.type === 'number') {
+      return document.querySelector(`button[data-number="${keyAction.value}"]`);
+    } else if (keyAction.type === 'operation') {
+      return document.querySelector(`button[data-operation="${keyAction.value}"]`);
+    } else if (keyAction.type === 'action') {
+      return document.querySelector(`button[data-action="${keyAction.value}"]`);
+    }
+    return null;
+  }
+
+  /**
+   * Provide visual feedback for button activation
+   * @param {HTMLElement} button - Button element to highlight
+   */
+  visualFeedback(button) {
+    if (!button) {
+      return;
+    }
+
+    button.classList.add('active');
+    setTimeout(() => {
+      button.classList.remove('active');
+    }, 150);
   }
 
   /**

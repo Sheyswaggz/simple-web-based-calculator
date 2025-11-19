@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: calculator-config
+  namespace: default
+  labels:
+    app: calculator
+    component: config
+    managed-by: kubernetes
+data:
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "info"

@@ -89,17 +89,99 @@ The calculator supports full keyboard operation for efficient use:
 
 ### Installation
 
-## Kubernetes Deployment
+## CI/CD Pipeline
 
-Deploy the calculator application to a Kubernetes cluster with high availability and auto-scaling capabilities.
+The calculator application uses GitHub Actions for continuous integration and continuous deployment, ensuring code quality and automated deployments.
 
-### Prerequisites
+### Overview
 
-- `kubectl` CLI tool installed and configured
-- Access to a Kubernetes cluster (v1.19+)
-- Ingress controller installed (e.g., NGINX Ingress Controller)
-- cert-manager installed (optional, for TLS certificate management)
+The CI/CD pipeline consists of three automated workflows:
 
-### Deployment Instructions
+1. **CI Workflow** - Runs tests, linting, and security scans on every push and pull request
+2. **Deployment Workflow** - Builds and deploys to production on main branch merges
+3. **Preview Workflow** - Deploys PR previews to GitHub Pages for testing
 
-1. **Apply all Kubernetes manifests:**
+### CI Workflow
+
+[![CI Pipeline](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/YOUR_USERNAME/YOUR_REPO/branch/main/graph/badge.svg)](https://codecov.io/gh/YOUR_USERNAME/YOUR_REPO)
+
+**Triggers:**
+- Push to `main` or `develop` branches
+- Pull requests to `main` branch
+
+**Steps:**
+1. Checkout code
+2. Setup Node.js environment with dependency caching
+3. Install dependencies (`npm ci`)
+4. Run ESLint for code quality checks
+5. Execute Jest test suite with coverage reporting
+6. Upload coverage reports to Codecov
+7. Build Docker image with Buildx
+8. Run Trivy security scan for vulnerabilities
+9. Upload security scan results to GitHub Security tab
+
+**Caching:** Dependencies are cached using GitHub Actions cache to speed up builds.
+
+### Deployment Workflow
+
+[![Deploy to Production](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/deploy.yml/badge.svg)](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/deploy.yml)
+
+**Triggers:**
+- Push to `main` branch (automatic)
+- Manual workflow dispatch with optional health check skip
+
+**Environments:**
+- **Production**: `https://calculator.example.com`
+
+**Steps:**
+1. Build multi-platform Docker image (linux/amd64, linux/arm64)
+2. Push image to GitHub Container Registry (ghcr.io)
+3. Tag image with commit SHA, branch name, timestamp, and `latest`
+4. Configure kubectl with cluster credentials
+5. Update Kubernetes deployment with new image
+6. Wait for rollout to complete (timeout: 10 minutes)
+7. Verify health check endpoint (30 attempts with 10s intervals)
+8. Send Slack notification with deployment status
+
+**Rollback:**
+- Automatic rollback triggered on deployment failure
+- Reverts to previous deployment revision
+- Rollback status verified before completion
+
+**Health Check:**
+- Endpoint: `https://calculator.example.com/health`
+- Expected response: HTTP 200
+- Can be skipped via manual workflow dispatch input
+
+### PR Preview Workflow
+
+**Triggers:**
+- Pull request opened, synchronized, or reopened
+- Manual workflow dispatch
+
+**Steps:**
+1. Run linting and tests
+2. Build static site with calculator files
+3. Create preview metadata (PR number, commit SHA, build time)
+4. Deploy to GitHub Pages at `https://YOUR_USERNAME.github.io/YOUR_REPO/pr-{PR_NUMBER}`
+5. Post comment on PR with preview URL and deployment details
+6. Update deployment status check
+
+**Preview Features:**
+- Isolated preview environment per PR
+- Automatic updates on new commits
+- 7-day retention period
+- Direct links to preview, workflow run, and commit
+
+### Required GitHub Secrets
+
+Configure the following secrets in your repository settings:
+
+| Secret | Description | Required For |
+|--------|-------------|--------------|
+| `KUBE_CONFIG` | Base64-encoded Kubernetes config file | Deployment workflow |
+| `SLACK_WEBHOOK` | Slack webhook URL for notifications | Deployment workflow |
+| `GITHUB_TOKEN` | Automatically provided by GitHub Actions | All workflows |
+
+**Setting up KUBE_CONFIG:**
